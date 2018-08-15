@@ -13,7 +13,7 @@ import copy
 
 class solution(object):
     def __init__(self):   
-        test = [1, 31538340.0, 0, 775, 424, 421, 192, 935, 1074, 1074, 708, 371, 0]
+        
         #读取相关数据
         #时间统一为秒，距离统一为米
         #file_path = os.getcwd()
@@ -296,8 +296,8 @@ class solution(object):
                         #找一个buff，保持原列表不变
                         buff_serve = copy.deepcopy(test_serve)
                         buff_serve.insert(ins_pos,cus_ind)
-                        suit_distance,suit_time_window,new_serve = self.construct_avai(buff_serve)
-                        if suit_distance & suit_time_window == 0:
+                        suit_volume,suit_weight,suit_distance,suit_time_window,new_serve = self.construct_avai(buff_serve)
+                        if suit_distance & suit_time_window & suit_volume & suit_weight== 0:
                             continue
                         else:
                             total_cost,current_time,distance,trans_cost,charge_cost,wait_cost,static_cost,charge_time = self.cal_cost(new_serve)
@@ -309,17 +309,17 @@ class solution(object):
                                 min_inc_ins_pos = ins_pos
                 #若未找到，将当前解加入到assign_list中去，并跳出本while
                 if min_inc_cus_ind == -1:
+                    suit_volume,suit_weight,suit_distance,suit_time_window,new_serve = self.construct_avai(test_serve)
                     self.assign_list_final.append(test_serve)
-#                    print(test_serve)
-#                    print(len(not_inserted))
+                    print(test_serve)
+                    print(len(not_inserted))
                     break
                 #若找到了，构造新的解，加入到结果中，并在not inserted中删掉
                 else:
                     test_serve.insert(min_inc_ins_pos,min_inc_cus_ind)
-                    suit_distance,suit_time_window,new_serve = self.construct_avai(test_serve)
                     has_inserted.append(min_inc_cus_ind)
                     not_inserted.remove(min_inc_cus_ind)
-                    test_serve = new_serve
+#                    test_serve = new_serve
 #            print("while finished")
             #find nearest里面要加上0，代价加上等待代价
             #也要把0加入到待插入列表中，但是插入后不能删除
@@ -327,8 +327,9 @@ class solution(object):
     def construct_avai(self,serve):
         #此函数构造可行解，首先车辆容量，再检查距离约束，再检查时间窗约束
         suit_volume,suit_weight = self.check_weight_volume(serve)
-        if suit_volume == 0 or suit_weight == 0:
+        if suit_volume == 0 or suit_weight == 0 and serve[0] == 0:
             serve[0] = 1
+            suit_volume,suit_weight = self.check_weight_volume(serve)            
         start_time = serve[1]
         suit_distance,new_serve = self.check_distance(serve)
         suit_time_window,max_delay,require_advance_time = self.check_time_window(new_serve,0)
@@ -336,7 +337,7 @@ class solution(object):
             suit_time_window,max_delay,require_advance_time = self.check_time_window(new_serve,require_advance_time)
             start_time -= require_advance_time
         new_serve[1] = start_time
-        return suit_distance,suit_time_window,new_serve
+        return suit_volume,suit_weight,suit_distance,suit_time_window,new_serve
         
     
     def cal_cost(self,serve):
@@ -416,8 +417,10 @@ class solution(object):
 if __name__ == '__main__':
     print("start",datetime.datetime.now())
     a = solution()
+#    test = [1, 31538340.0, 0, 775, 424, 421, 192, 935, 708, 371, 0]
     print("load data finish and begin construct answer",datetime.datetime.now())
     a.insert()
+#    suit_volume,suit_weight,suit_distance,suit_time_window,new_serve = a.construct_avai(test)
     print("finish",datetime.datetime.now())
     for item in a.assign_list_final:
         print(item)
