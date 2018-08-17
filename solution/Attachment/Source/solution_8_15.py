@@ -21,7 +21,7 @@ class solution(object):
         
         self.data = {1:1601,2:1501,3:1401,4:1301,5:1201}
         self.charge_begin_index = {1:1501,2:1401,3:1301,4:1201,5:1101}
-        self.id = 1
+        self.id = 2
         
         self.distance_array = np.zeros((self.data[self.id],self.data[self.id]))
         self.time_array = np.zeros((self.data[self.id],self.data[self.id]))
@@ -422,13 +422,13 @@ class solution(object):
         return total_cost,current_time,distance,trans_cost,charge_cost,wait_cost,static_cost,charge_time
     
     def write_csv(self):
-        result = open('..\..\Result.csv','w',newline = '')
+        result = open('..\..\Result_'+ str(self.id) + '.csv','w',newline = '')
         csv_write = csv.writer(result)
         csv_write.writerow(["trans_code    ","vehicle_type    ","dist_seq","distribute_lea_tm","distribute_arr_tm","distance","trans_cost","charge_cost","wait_cost","fixed_use_cost","total_cost","charge_cnt"])
         for i in range(len(self.assign_list_final)):
-            assign_str = ''
-            for j in range(2,len(self.assign_list_final[i])-1):
-                assign_str = assign_str + '%d'%(self.assign_list_final[i][j]) +';'
+            assign_str = '0;'
+            for j in range(3,len(self.assign_list_final[i])-1):
+                assign_str = assign_str + str(self.id) + '%04d'%(self.assign_list_final[i][j]) +';'
             assign_str = assign_str + '0'
             total_cost,current_time,distance,trans_cost,charge_cost,wait_cost,static_cost,charge_time = self.cal_cost(self.assign_list_final[i])
             result_string = ['DP%04d'%(i+1),'%d'%(self.assign_list_final[i][0]+1),assign_str,time.strftime('%H:%M',time.localtime(self.assign_list_final[i][1])), time.strftime('%H:%M',time.localtime(current_time)),\
