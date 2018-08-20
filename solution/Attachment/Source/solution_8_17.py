@@ -12,7 +12,7 @@ import copy
 #import os
 
 class solution(object):
-    def __init__(self):   
+    def __init__(self,id):   
         #读取相关数据
         #时间统一为秒，距离统一为米
         #file_path = os.getcwd()
@@ -21,7 +21,7 @@ class solution(object):
         
         self.data = {1:1601,2:1501,3:1401,4:1301,5:1201}
         self.charge_begin_index = {1:1501,2:1401,3:1301,4:1201,5:1101}
-        self.id = 3
+        self.id = id
         
         self.distance_array = np.zeros((self.data[self.id],self.data[self.id]))
         self.time_array = np.zeros((self.data[self.id],self.data[self.id]))
@@ -271,6 +271,15 @@ class solution(object):
                 charge_index = search_list[i]
         return min_distance,charge_index
     
+    def find_nearest_quantity_custom_in_list(self,quantity,point_ID,search_list):
+        min_distance_list = [float('inf')]*quantity
+        charge_index_list = [-1]*quantity    
+        for i in range(len(search_list)):
+            if self.distance_array[point_ID][search_list[i]] < max(min_distance_list):
+                min_distance_list[min_distance_list.index(max(min_distance_list))] = self.distance_array[point_ID][search_list[i]]
+                charge_index_list[min_distance_list.index(max(min_distance_list))] = search_list[i]
+        return min_distance_list,charge_index_list
+    
     def find_nearest_custom(self,point_ID):
         min_distance = float('inf')
         custom_index = -1
@@ -294,7 +303,7 @@ class solution(object):
         else:
             conversation = origin_cost - new_cost
         return conversation
-    #gai
+    #最近邻插入
     def insert(self):
         has_inserted = []
         not_inserted = [n for n in range(1,self.charge_begin_index[self.id])]
@@ -306,18 +315,24 @@ class solution(object):
             not_inserted.remove(index)
             init_serve = self.assign_list[index-1]
             #循环遍历未插入点，找使花费值增长最小的出入点以及插入位置，同时检查解的可行性
-            min_inc_cost = float('inf')
-            min_inc_ins_pos = -1
-            min_inc_cus_ind = -1
             test_serve = copy.deepcopy(init_serve)
+            if len(not_inserted) == 0:
+                #把最后一个没进入while的客户点也构造解加入到assign中
+                suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(test_serve)
+                self.assign_list_final.append(new_serve)
             while(len(not_inserted) != 0):
                 min_inc_cost = float('inf')
                 min_inc_ins_pos = -1
                 min_inc_cus_ind = -1
                 buff_serve = copy.deepcopy(test_serve)
                 for ins_pos in range(3,len(test_serve)):
-                    for cus_ind in not_inserted:
-                        #找一个buff，保持原列表不变
+                    if len(not_inserted) > 35:
+                        min_distance_list,cus_ind_list = self.find_nearest_quantity_custom_in_list(35,buff_serve[ins_pos-1],not_inserted)
+                    #min_distance,cus_ind = self.find_nearest_custom_in_list(buff_serve[ins_pos-1],not_inserted)
+                    else:
+                        cus_ind_list = not_inserted
+                    for cus_ind in cus_ind_list:
+                    #找一个buffer，保持原列表不变
                         buff_serve = copy.deepcopy(test_serve)
                         buff_serve.insert(ins_pos,cus_ind)
                         suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(buff_serve)
@@ -334,7 +349,7 @@ class solution(object):
                 #若未找到，将当前解加入到assign_list中去，并跳出本while
                 if min_inc_cus_ind == -1:
                     suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(test_serve)
-                    self.assign_list_final.append(test_serve)
+                    self.assign_list_final.append(new_serve)
                     print(test_serve)
                     print(len(not_inserted))
                     break
@@ -343,10 +358,23 @@ class solution(object):
                     test_serve.insert(min_inc_ins_pos,min_inc_cus_ind)
                     has_inserted.append(min_inc_cus_ind)
                     not_inserted.remove(min_inc_cus_ind)
-#                    test_serve = new_serve
-#            print("while finished")
             #find nearest里面要加上0，代价加上等待代价
             #也要把0加入到待插入列表中，但是插入后不能删除
+        #保证无客户点被遗漏，之后查代码bug
+        all = [n for n in range(1,self.charge_begin_index[self.id])]
+        for assign in self.assign_list_final:
+            for item in assign[3:]:
+                if item == 0:
+                    continue
+                else:
+                    if item >= self.charge_begin_index[self.id]:
+                        continue
+                    all.remove(item) 
+        for not_assign in all:
+            serve = self.assign_list[not_assign - 1]
+            suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(serve)
+            self.assign_list_final.append(new_serve)
+            
             
     def construct_avai(self,serve):
         #此函数构造可行解，首先车辆容量，再检查距离约束，再检查时间窗约束
@@ -421,8 +449,8 @@ class solution(object):
                 distance += self.distance_array[serve[i]][serve[i+1]]  
         return total_cost,current_time,distance,trans_cost,charge_cost,wait_cost,static_cost,charge_time
     
-    def write_csv(self):
-        result = open('..\..\Result_'+ str(self.id) + '.csv','w',newline = '')
+    def write_csv(self,stime):
+        result = open('..\..\Result_'+ str(self.id) + '_' + '%.1f'%(stime) + '.csv','w',newline = '')
         csv_write = csv.writer(result)
         csv_write.writerow(["trans_code    ","vehicle_type    ","dist_seq","distribute_lea_tm","distribute_arr_tm","distance","trans_cost","charge_cost","wait_cost","fixed_use_cost","total_cost","charge_cnt"])
         for i in range(len(self.assign_list_final)):
@@ -438,13 +466,16 @@ class solution(object):
             csv_write.writerow(result_string)
     
 if __name__ == '__main__':
-    print("start",datetime.datetime.now())
-    a = solution()
-#    test = [1, 31538340.0, 0, 775, 424, 421, 192, 935, 708, 371, 0]
-    print("load data finish and begin construct answer",datetime.datetime.now())
-    a.insert()
-#    suit_volume,suit_weight,suit_distance,suit_time_window,new_serve = a.construct_avai(test)
-    print("finish",datetime.datetime.now())
-    for item in a.assign_list_final:
-        print(item)
-    a.write_csv()
+    for i in range(1,6):
+        print("start",datetime.datetime.now())
+        begin_time = time.time()
+        a = solution(i)
+    #    test = [1, 31538340.0, 0, 775, 424, 421, 192, 935, 708, 371, 0]
+        print("load data finish and begin construct answer",datetime.datetime.now())
+        a.insert()
+    #    suit_volume,suit_weight,suit_distance,suit_time_window,new_serve = a.construct_avai(test)
+        print("finish",datetime.datetime.now())
+        end_time = time.time()
+        a.write_csv(end_time - begin_time)
+    
+   
