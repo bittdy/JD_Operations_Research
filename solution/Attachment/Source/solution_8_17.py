@@ -206,7 +206,7 @@ class solution(object):
     def check_distance(self,serve):
         remain_distance = self.vehicle[serve[0]][2]
         suit_distance = 1
-        new_serve = serve
+        new_serve = copy.deepcopy(serve)
         count = 0
         for i in range(2,len(serve)-1):
             #不是倒数第一个客户点
@@ -222,6 +222,7 @@ class solution(object):
                     new_serve.insert(i+count+1,_charge_index)
                     count+=1
                     remain_distance = self.vehicle[serve[0]][2] - self.distance_array[_charge_index][serve[i+1]]
+                    #print(self.distance_array[_charge_index][serve[i+1]],remain_distance)
                 elif remain_distance < self.distance_array[serve[i]][serve[i+1]] + min_distance:
                     _min_distance,_charge_index = self.find_nearest_charge(serve[i],self.vehicle[serve[0]][4])
                     #有符合约束的充电站可以添加
@@ -231,10 +232,13 @@ class solution(object):
                     new_serve.insert(i+count+1,_charge_index)
                     count+=1
                     remain_distance = self.vehicle[serve[0]][2] - self.distance_array[_charge_index][serve[i+1]]
+                    #print(self.distance_array[_charge_index][serve[i+1]],remain_distance)
                 else:
                     remain_distance = remain_distance - self.distance_array[serve[i]][serve[i+1]]
+                    #print(self.distance_array[serve[i]][serve[i+1]],remain_distance)
             #是最后一个客户点      
             else:
+                #print(remain_distance,self.distance_array[serve[i]][0])
                 if remain_distance < self.distance_array[serve[i]][0]:
                     _min_distance,_charge_index = self.find_nearest_charge(serve[i],self.vehicle[serve[0]][4])
                     #有符合的充电站可以添加
@@ -244,6 +248,7 @@ class solution(object):
                     new_serve.insert(i+count+1,_charge_index)
                     count+=1
                     remain_distance = self.vehicle[serve[0]][2] - self.distance_array[_charge_index][serve[i+1]]
+                    #print(self.distance_array[_charge_index][serve[i+1]],remain_distance)
         return suit_distance,new_serve
     
     def find_nearest_charge(self,point_ID,unit_cost):
@@ -477,5 +482,6 @@ if __name__ == '__main__':
         print("finish",datetime.datetime.now())
         end_time = time.time()
         a.write_csv(end_time - begin_time)
-    
-   
+#    test = [0, 31536000.0, 0, 473, 317, 204, 231, 708, 347, 1383, 1320, 1304, 1302, 1462, 0]
+#    a = solution(1)
+#    suit_distance,new_serve = a.check_distance(test)

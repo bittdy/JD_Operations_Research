@@ -15,7 +15,7 @@ all = [n for n in range(id*10000 + 1,id*10000 + charge_begin_index[id])]
 #print(all)
 
 #with open('..\..\Result_'+str(id)+'.csv','r') as input_node:
-with open('..\..\Result_5_66.0.csv','r') as input_node:
+with open('..\..\Result_5_67.0.csv','r') as input_node:
     r = csv.DictReader(input_node)
     for line in r:
         str_origin = line['dist_seq']
