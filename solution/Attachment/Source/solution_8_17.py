@@ -18,6 +18,7 @@ class solution(object):
         #file_path = os.getcwd()
         self.assign_list = []
         self.assign_list_final = []
+        self.new_assign_list = []
         
         self.data = {1:1601,2:1501,3:1401,4:1301,5:1201}
         self.charge_begin_index = {1:1501,2:1401,3:1301,4:1201,5:1101}
@@ -118,7 +119,7 @@ class solution(object):
             #除了第一次和最后一次访问起点，要加上等待时间以及到下一个点的时间
             elif serve[i] == 0 and (i != 2 and i != len(serve)-1):
                 if current_time > self.node[serve[i]][6]:
-                    print('i:',i)
+                    #print('i:',i)
                     suit_time_window = 0
                     require_advance_time = current_time - self.node[serve[i]][6]
                     max_delay = 0
@@ -202,6 +203,13 @@ class solution(object):
                 collect_volume = 0
         return 1
     
+    def delete_charge(self,serve):
+        new_serve = copy.deepcopy(serve)
+        for i in range(3,len(serve)):
+            if serve[i] >= self.charge_begin_index[self.id]:
+                new_serve.remove(serve[i])
+        return new_serve
+    
        #jiaru 0 
     def check_distance(self,serve):
         remain_distance = self.vehicle[serve[0]][2]
@@ -276,6 +284,15 @@ class solution(object):
                 charge_index = search_list[i]
         return min_distance,charge_index
     
+    def find_farthest_custom_in_list(self,point_ID,search_list):
+        max_distance = 0
+        charge_index = -1
+        for i in range(len(search_list)):
+            if self.distance_array[point_ID][search_list[i]] > max_distance:
+                max_distance = self.distance_array[point_ID][search_list[i]]
+                charge_index = search_list[i]
+        return max_distance,charge_index
+    
     def find_nearest_quantity_custom_in_list(self,quantity,point_ID,search_list):
         min_distance_list = [float('inf')]*quantity
         charge_index_list = [-1]*quantity    
@@ -284,6 +301,33 @@ class solution(object):
                 min_distance_list[min_distance_list.index(max(min_distance_list))] = self.distance_array[point_ID][search_list[i]]
                 charge_index_list[min_distance_list.index(max(min_distance_list))] = search_list[i]
         return min_distance_list,charge_index_list
+    
+    def find_nearest_quantity_custom_in_list_by_tw(self,quantity,point_ID,search_list):
+        min_dtime_list = [float('inf')]*quantity
+        custom_index_list = [-1]*quantity    
+        for i in range(len(search_list)):
+            if abs(self.node[point_ID][6] - self.node[search_list[i]][6]) < max(min_dtime_list):
+                min_dtime_list[min_dtime_list.index(max(min_dtime_list))] = abs(self.node[point_ID][6] - self.node[search_list[i]][6])
+                custom_index_list[min_dtime_list.index(max(min_dtime_list))] = search_list[i]
+        return min_dtime_list,custom_index_list
+    
+    def find_nearest_quantity_custom_in_list_by_weight(self,quantity,point_ID,search_list):
+        min_distance_time_list = [float('inf')]*quantity
+        custom_index_list = [-1]*quantity    
+        for i in range(len(search_list)):
+            if (0.005*(self.node[point_ID][6] - self.node[search_list[i]][6]))**2 + self.distance_array[point_ID][search_list[i]]**2 - (0.35*self.distance_array[0][search_list[i]])**2< max(min_distance_time_list):
+                min_distance_time_list[min_distance_time_list.index(max(min_distance_time_list))] = (0.01*(self.node[point_ID][6] - self.node[search_list[i]][6]))**2 + self.distance_array[point_ID][search_list[i]]**2 
+                custom_index_list[min_distance_time_list.index(max(min_distance_time_list))] = search_list[i]
+        return min_distance_time_list,custom_index_list
+    
+    def find_farthest_quantity_custom_in_list(self,quantity,point_ID,search_list):
+        max_distance_list = [0]*quantity
+        charge_index_list = [-1]*quantity    
+        for i in range(len(search_list)):
+            if self.distance_array[point_ID][search_list[i]] > min(max_distance_list) and self.distance_array[point_ID][search_list[i]] < 50000:
+                max_distance_list[max_distance_list.index(min(max_distance_list))] = self.distance_array[point_ID][search_list[i]]
+                charge_index_list[max_distance_list.index(min(max_distance_list))] = search_list[i]
+        return max_distance_list,charge_index_list
     
     def find_nearest_custom(self,point_ID):
         min_distance = float('inf')
@@ -295,6 +339,17 @@ class solution(object):
                 min_distance = self.distance_array[point_ID][i]
                 custom_index = i
         return min_distance,custom_index
+    
+    def find_farthest_custom(self,point_ID):
+        max_distance = 0
+        custom_index = -1
+        for i in range(1,self.charge_begin_index[self.id]):
+            if i == point_ID:
+                continue
+            if self.distance_array[point_ID][i] > max_distance:
+                max_distance = self.distance_array[point_ID][i]
+                custom_index = i
+        return max_distance,custom_index
     
     def cal_conversation(self,origin,new):
         origin_1 = self.convert_vali(origin[0])
@@ -332,11 +387,12 @@ class solution(object):
                 buff_serve = copy.deepcopy(test_serve)
                 for ins_pos in range(3,len(test_serve)):
                     if len(not_inserted) > 35:
-                        min_distance_list,cus_ind_list = self.find_nearest_quantity_custom_in_list(35,buff_serve[ins_pos-1],not_inserted)
+                        min_distance_list,cus_ind_list = self.find_nearest_quantity_custom_in_list_by_weight(35,buff_serve[ins_pos-1],not_inserted)
                     #min_distance,cus_ind = self.find_nearest_custom_in_list(buff_serve[ins_pos-1],not_inserted)
                     else:
-                        cus_ind_list = not_inserted
-                    for cus_ind in cus_ind_list:
+                        cus_ind_list = copy.deepcopy(not_inserted)
+                    for cus_ind in cus_ind_list:   
+                    #for cus_ind in not_inserted:
                     #找一个buffer，保持原列表不变
                         buff_serve = copy.deepcopy(test_serve)
                         buff_serve.insert(ins_pos,cus_ind)
@@ -380,6 +436,83 @@ class solution(object):
             suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(serve)
             self.assign_list_final.append(new_serve)
             
+    #小规模最近邻插入
+    def little_insert(self,serve_1,serve_2):
+        new_total_cost = 0
+        has_inserted = []
+        if len(serve_1) > len(serve_2):
+            not_inserted = self.unpack_single(serve_2)
+            test_serve = copy.deepcopy(serve_1)
+        else:
+            not_inserted = self.unpack_single(serve_1)
+            test_serve = copy.deepcopy(serve_2)
+        new_assign = []
+        #当仍有顾客点未被服务
+        while(len(not_inserted) != 0):
+            #在未分配点中找与车场最近的点作为起始点，构成初始解，计算花费
+            distance,index = self.find_nearest_custom_in_list(0,not_inserted)
+            has_inserted.append(index)
+            not_inserted.remove(index)
+            init_serve = self.assign_list[index-1]
+            #循环遍历未插入点，找使花费值增长最小的出入点以及插入位置，同时检查解的可行性
+            test_serve = copy.deepcopy(init_serve)
+            if len(not_inserted) == 0:
+                #把最后一个没进入while的客户点也构造解加入到assign中
+                suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(test_serve)
+                new_assign.append(new_serve)
+            while(len(not_inserted) != 0):
+                min_inc_cost = float('inf')
+                min_inc_ins_pos = -1
+                min_inc_cus_ind = -1
+                buff_serve = copy.deepcopy(test_serve)
+                for ins_pos in range(3,len(test_serve)):
+                    for cus_ind in not_inserted:
+                    #找一个buffer，保持原列表不变
+                        buff_serve = copy.deepcopy(test_serve)
+                        buff_serve.insert(ins_pos,cus_ind)
+                        suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(buff_serve)
+                        if suit_distance & suit_time_window & suit_capacity== 0:
+                            continue
+                        else:
+                            total_cost,current_time,distance,trans_cost,charge_cost,wait_cost,static_cost,charge_time = self.cal_cost(new_serve)
+                            ori_total_cost,ori_current_time,ori_distance,ori_trans_cost,ori_charge_cost,ori_wait_cost,ori_static_cost,ori_charge_time = self.cal_cost(test_serve)
+                            inc_cost = total_cost - ori_total_cost
+                            if inc_cost < min_inc_cost:
+                                min_inc_cost = inc_cost
+                                min_inc_cus_ind = cus_ind
+                                min_inc_ins_pos = ins_pos
+                #若未找到，将当前解加入到assign_list中去，并跳出本while
+                if min_inc_cus_ind == -1:
+                    suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(test_serve)
+                    new_assign.append(new_serve)
+#                    print(test_serve)
+#                    print(len(not_inserted))
+                    break
+                #若找到了，构造新的解，加入到结果中，并在not inserted中删掉
+                else:
+                    test_serve.insert(min_inc_ins_pos,min_inc_cus_ind)
+                    has_inserted.append(min_inc_cus_ind)
+                    not_inserted.remove(min_inc_cus_ind)
+            #find nearest里面要加上0，代价加上等待代价
+            #也要把0加入到待插入列表中，但是插入后不能删除
+        #保证无客户点被遗漏，之后查代码bug
+        all = copy.deepcopy(points_list)
+        for assign in new_assign:
+            for item in assign[3:]:
+                if item == 0:
+                    continue
+                else:
+                    if item >= self.charge_begin_index[self.id]:
+                        continue
+                    all.remove(item) 
+        for not_assign in all:
+            serve = self.assign_list[not_assign - 1]
+            suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(serve)
+            new_assign.append(new_serve)
+        for assign in new_assign:
+            total_cost,current_time,distance,trans_cost,charge_cost,wait_cost,static_cost,charge_time = self.cal_cost(assign)
+            new_total_cost += total_cost
+        return new_total_cost,new_assign
             
     def construct_avai(self,serve):
         #此函数构造可行解，首先车辆容量，再检查距离约束，再检查时间窗约束
@@ -395,8 +528,163 @@ class solution(object):
             start_time -= require_advance_time
         new_serve[1] = start_time
         return suit_capacity,suit_distance,suit_time_window,new_serve
+    
+    def unpack(self,points_list_1,points_list_2):
+        points_list = []
+        for i in range(3,len(points_list_1)):
+            if points_list_1[i] == 0 or points_list_1[i] >= self.charge_begin_index[self.id]:
+                continue
+            points_list.append(points_list_1[i])
+        for j in range(3,len(points_list_2)):
+            if points_list_2[j] == 0 or points_list_2[j] >= self.charge_begin_index[self.id]:
+                continue
+            points_list.append(points_list_2[j])
+        return points_list
+    
+    def unpack_single(self,serve):
+        points_list = []
+        for i in range(3,len(serve)):
+            if serve[i] == 0 or serve[i] >= self.charge_begin_index[self.id]:
+                continue
+            points_list.append(serve[i])
+        return points_list
+    
+    def c_w_combination(self):
+        max_c_w = 0
+        max_i_j = [0,0]
+        max_new_assign = []
+        assign_1_buffer = []
+        assign_2_buffer = []
+        for i in range(0,len(self.assign_list_final)):
+            assign_1 = copy.deepcopy(self.assign_list_final[i])
+            for j in range(0,len(self.assign_list_final)):
+                print(j)
+                if j == i:
+                    continue
+                assign_2 = copy.deepcopy(self.assign_list_final[j])
+                total_cost_1,current_time_1,distance_1,trans_cost_1,charge_cost_1,wait_cost_1,static_cost_1,charge_time_1 = self.cal_cost(assign_1)
+                total_cost_2,current_time_2,distance_2,trans_cost_2,charge_cost_2,wait_cost_2,static_cost_2,charge_time_2 = self.cal_cost(assign_2)
+                origin_total_cost = total_cost_1 + total_cost_2
+                points_list = self.unpack(assign_1,assign_2)
+                new_total_cost,new_assign = self.little_insert(points_list)
+                c_w = origin_total_cost - new_total_cost
+                if c_w > max_c_w:
+                    max_c_w = c_w
+                    max_i_j[0] = i
+                    max_i_j[1] = j
+                    max_new_assign = copy.deepcopy(new_assign)
+                    assign_1_buffer = copy.deepcopy(assign_1)
+                    assign_2_buffer = copy.deepcopy(assign_2)
+                if max_c_w > 300:
+                    break
+            if max_c_w > 300:
+                break
+        self.assign_list_final.remove(assign_1_buffer)
+        self.assign_list_final.remove(assign_2_buffer)
+        for assign in max_new_assign:
+            self.assign_list_final.append(assign)                    
+        print("reduce ",max_c_w," this time")
+    
+    def insert_sec(self):
+        find_ins = 0
+        not_inserted = []
+        for item in self.assign_list_final:
+            if len(item) > 6:
+                self.new_assign_list.append(item)
+            else:
+                points_list = self.unpack_single(item)
+                if len(points_list) > 2:
+                    self.new_assign_list.append(item)
+                else:
+                    not_inserted.extend(points_list)
+        not_inserted_buffer = copy.deepcopy(not_inserted)
+        for item in not_inserted_buffer:
+            for i in range(0,len(self.new_assign_list)):
+                assign_buffer = copy.deepcopy(self.new_assign_list[i])
+                for ins_pos in range(3,len(assign_buffer)):
+                    buff_serve = copy.deepcopy(assign_buffer)
+                    buff_serve.insert(ins_pos,item)
+                    new_buff_serve = self.delete_charge(buff_serve)
+                    suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(new_buff_serve)
+                    if suit_distance & suit_time_window & suit_capacity== 0:
+                        continue
+                    else:
+                        self.new_assign_list[i] = copy.deepcopy(new_serve)
+                        print('insert:',new_serve)
+                        not_inserted.remove(item)
+                        find_ins = 1
+                        break
+                if find_ins == 1:
+                    find_ins = 0
+                    break
+            #若未找到，item保留在not_inserted中
+         #最后，对于仍在not_inserted中的点在进行一次insert
+        while(len(not_inserted) != 0):
+            #在未分配点中找与车场最近的点作为起始点，构成初始解，计算花费
+            distance,index = self.find_nearest_custom_in_list(0,not_inserted)
+            not_inserted.remove(index)
+            init_serve = self.assign_list[index-1]
+            #循环遍历未插入点，找使花费值增长最小的出入点以及插入位置，同时检查解的可行性
+            test_serve = copy.deepcopy(init_serve)
+            if len(not_inserted) == 0:
+                #把最后一个没进入while的客户点也构造解加入到assign中
+                suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(test_serve)
+                self.new_assign_list.append(new_serve)
+            while(len(not_inserted) != 0):
+                min_inc_cost = float('inf')
+                min_inc_ins_pos = -1
+                min_inc_cus_ind = -1
+                buff_serve = copy.deepcopy(test_serve)
+                for ins_pos in range(3,len(test_serve)):
+                    for cus_ind in not_inserted:   
+                    #for cus_ind in not_inserted:
+                    #找一个buffer，保持原列表不变
+                        buff_serve = copy.deepcopy(test_serve)
+                        buff_serve.insert(ins_pos,cus_ind)
+                        suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(buff_serve)
+                        if suit_distance & suit_time_window & suit_capacity== 0:
+                            continue
+                        else:
+                            total_cost,current_time,distance,trans_cost,charge_cost,wait_cost,static_cost,charge_time = self.cal_cost(new_serve)
+                            ori_total_cost,ori_current_time,ori_distance,ori_trans_cost,ori_charge_cost,ori_wait_cost,ori_static_cost,ori_charge_time = self.cal_cost(test_serve)
+                            inc_cost = total_cost - ori_total_cost
+                            if inc_cost < min_inc_cost:
+                                min_inc_cost = inc_cost
+                                min_inc_cus_ind = cus_ind
+                                min_inc_ins_pos = ins_pos
+                #若未找到，将当前解加入到assign_list中去，并跳出本while
+                if min_inc_cus_ind == -1:
+                    suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(test_serve)
+                    self.new_assign_list.append(new_serve)
+                    #print(test_serve)
+                    #print(len(not_inserted))
+                    break
+                #若找到了，构造新的解，加入到结果中，并在not inserted中删掉
+                else:
+                    test_serve.insert(min_inc_ins_pos,min_inc_cus_ind)
+                    not_inserted.remove(min_inc_cus_ind)
+            #find nearest里面要加上0，代价加上等待代价
+            #也要把0加入到待插入列表中，但是插入后不能删除
+        #保证无客户点被遗漏，之后查代码bug
+        all = [n for n in range(1,self.charge_begin_index[self.id])]
+        for assign in self.assign_list_final:
+            for item in assign[3:]:
+                if item == 0:
+                    continue
+                else:
+                    if item >= self.charge_begin_index[self.id]:
+                        continue
+                    all.remove(item) 
+        for not_assign in all:
+            serve = self.assign_list[not_assign - 1]
+            suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(serve)
+            self.new_assign_list.append(new_serve)
+            
+    def average_insert(self):
         
+            
     def cal_cost(self,serve):
+        #print(serve)
         distance = total_cost = charge_cost = trans_cost = wait_cost = static_cost = charge_time = 0
         #for serve in self.assign_list:
         current_time = serve[1]
@@ -466,8 +754,8 @@ class solution(object):
             total_cost,current_time,distance,trans_cost,charge_cost,wait_cost,static_cost,charge_time = self.cal_cost(self.assign_list_final[i])
             result_string = ['DP%04d'%(i+1),'%d'%(self.assign_list_final[i][0]+1),assign_str,time.strftime('%H:%M',time.localtime(self.assign_list_final[i][1])), time.strftime('%H:%M',time.localtime(current_time)),\
                             '%d'%(distance) , '%.2f'%(trans_cost) , '%d'%(charge_cost) , '%.2f'%(wait_cost) , '%d'%(static_cost) , '%.2f'%(total_cost) , '%d'%(charge_time)]
-            if i==0:
-                print(result_string)
+            #if i==0:
+                #print(result_string)
             csv_write.writerow(result_string)
     
 if __name__ == '__main__':
@@ -478,8 +766,13 @@ if __name__ == '__main__':
     #    test = [1, 31538340.0, 0, 775, 424, 421, 192, 935, 708, 371, 0]
         print("load data finish and begin construct answer",datetime.datetime.now())
         a.insert()
+        print("the first time insert has finished and now begin the second time")
+        a.insert_sec()
     #    suit_volume,suit_weight,suit_distance,suit_time_window,new_serve = a.construct_avai(test)
         print("finish",datetime.datetime.now())
+#        for i in range(0,100):
+#            print("this is ",i," th c_w")
+#            a.c_w_combination()
         end_time = time.time()
         a.write_csv(end_time - begin_time)
 #    test = [0, 31536000.0, 0, 473, 317, 204, 231, 708, 347, 1383, 1320, 1304, 1302, 1462, 0]
