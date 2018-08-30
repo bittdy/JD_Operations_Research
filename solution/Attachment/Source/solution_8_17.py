@@ -9,6 +9,7 @@ import numpy as np
 import time
 import datetime
 import copy
+from math import pi,radians,degrees,sin,cos,atan2
 #import os
 
 class solution(object):
@@ -86,7 +87,40 @@ class solution(object):
 #                print('origin:',self.assign_list[p])
 #                print('distance_flag:',distance_flag)
 #                print('time_window_flag:',time_window_flag)
-#                print('new_serve:',new_serve)        
+#                print('new_serve:',new_serve)     
+        
+    def getDegree(self,latA, lonA, latB, lonB):
+        '''
+        Args:
+            point p1(latA, lonA)
+            point p2(latB, lonB)
+        Returns:
+            bearing between the two GPS points,
+            default: the basis of heading direction is north
+        '''
+        radLatA = radians(latA)
+        radLonA = radians(lonA)
+        radLatB = radians(latB)
+        radLonB = radians(lonB)
+        dLon = radLonB - radLonA
+        y = sin(dLon) * cos(radLatB)
+        x = cos(radLatA) * sin(radLatB) - sin(radLatA) * cos(radLatB) * cos(dLon)
+        brng = degrees(atan2(y, x))
+        brng = (brng + 360) % 360
+        radBrng = radians(brng)
+        return radBrng
+        
+    def partition(self,par_num,init_angle):
+        #此函数将所有数据点分割为par_num个区域，第一个区域的角度为init_angle
+        par_result = [[0] for n in range(0,par_num)]
+        eve_angle = 2 * pi / par_num
+        for i in range(1,self.charge_begin_index[self.id]):
+            radBrng = self.getDegree(self.node[0][2],self.node[0][1],self.node[i][2],self.node[i][1])
+            index = (radBrng - init_angle) / eve_angle
+            int_index = int(index)
+            par_result[int_index].append(i)
+        return par_result
+        
 
               
     def check_time_window(self,serve,advance_time):
@@ -386,13 +420,14 @@ class solution(object):
                 min_inc_cus_ind = -1
                 buff_serve = copy.deepcopy(test_serve)
                 for ins_pos in range(3,len(test_serve)):
-                    if len(not_inserted) > 35:
+                    '''if len(not_inserted) > 35:
                         min_distance_list,cus_ind_list = self.find_nearest_quantity_custom_in_list_by_weight(35,buff_serve[ins_pos-1],not_inserted)
                     #min_distance,cus_ind = self.find_nearest_custom_in_list(buff_serve[ins_pos-1],not_inserted)
                     else:
                         cus_ind_list = copy.deepcopy(not_inserted)
-                    for cus_ind in cus_ind_list:   
-                    #for cus_ind in not_inserted:
+                    for cus_ind in cus_ind_list: 
+                    '''
+                    for cus_ind in not_inserted:
                     #找一个buffer，保持原列表不变
                         buff_serve = copy.deepcopy(test_serve)
                         buff_serve.insert(ins_pos,cus_ind)
@@ -680,7 +715,7 @@ class solution(object):
             suit_capacity,suit_distance,suit_time_window,new_serve = self.construct_avai(serve)
             self.new_assign_list.append(new_serve)
             
-    def average_insert(self):
+    #def average_insert(self):
         
             
     def cal_cost(self,serve):
@@ -759,6 +794,7 @@ class solution(object):
             csv_write.writerow(result_string)
     
 if __name__ == '__main__':
+    '''
     for i in range(1,6):
         print("start",datetime.datetime.now())
         begin_time = time.time()
@@ -778,3 +814,8 @@ if __name__ == '__main__':
 #    test = [0, 31536000.0, 0, 473, 317, 204, 231, 708, 347, 1383, 1320, 1304, 1302, 1462, 0]
 #    a = solution(1)
 #    suit_distance,new_serve = a.check_distance(test)
+        '''
+    a = solution(1)
+    p = a.partition(40,0.08)
+    for item in p:
+        print(item,len(item))
